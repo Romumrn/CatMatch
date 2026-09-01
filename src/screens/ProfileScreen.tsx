@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
+import { useSound } from '../context/SoundContext';
 import { MeetingPlace, Temperament } from '../types';
 import { colors, radius, shadow, spacing, CONTENT_MAX_W } from '../theme';
 import { Chip, PrimaryButton, VerifiedBadge } from '../components/ui';
@@ -34,6 +35,7 @@ const ALL_PLACES: MeetingPlace[] = ['Parc', 'Appartement', "Cour d'immeuble"];
 
 export default function ProfileScreen() {
   const { profile, matches, likesReceived, updateProfile } = useApp();
+  const { enabled: soundEnabled, toggle: toggleSound } = useSound();
   const [editingBio, setEditingBio] = useState(false);
   const [bioDraft, setBioDraft] = useState(profile.bio);
   const [heroIndex, setHeroIndex] = useState(0);
@@ -206,6 +208,21 @@ export default function ProfileScreen() {
                 last
               />
             </View>
+          </Section>
+
+          {/* Préférences */}
+          <Section title="Préférences">
+            <View style={styles.healthCard}>
+              <HealthRow
+                label="Ronronnement au match"
+                value={soundEnabled}
+                onChange={toggleSound}
+                last
+              />
+            </View>
+            <Text style={styles.sectionHint}>
+              Le petit ronron qui accompagne la pluie de chats quand ça matche.
+            </Text>
           </Section>
 
           {/* Contact */}

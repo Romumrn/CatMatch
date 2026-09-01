@@ -34,6 +34,7 @@
 > - ↩️ **Reviens en arrière** si tu as swipé trop vite
 > - ✨ **Score d'affinité** calculé sur les tempéraments, le lieu de rencontre et la distance
 > - 💘 **Match à double like** — personne ne reçoit ton contact sans que ce soit réciproque
+> - 🐈 **Pluie de chats et ronronnement** à chaque match, parce qu'il faut fêter ça
 > - 💌 **Vois qui t'a liké** avant même de swiper
 > - 💬 **Chat intégré** : accusés de lecture, messages tout prêts, dématcher en un geste
 > - 🎭 **Profil détaillé** — âge, race, tempérament, santé (vacciné, stérilisé, pucé),
@@ -52,7 +53,7 @@
   <tr>
     <td align="center" width="25%"><img src="docs/screenshots/01-decouvrir.png" width="200" alt="Écran Découvrir : deck de swipe"><br><sub><b>Découvrir</b><br>Swipe, super like, retour arrière</sub></td>
     <td align="center" width="25%"><img src="docs/screenshots/02-fiche.png" width="200" alt="Fiche détaillée d'un chat"><br><sub><b>Fiche profil</b><br>Lieu de rencontre, santé, contact masqué</sub></td>
-    <td align="center" width="25%"><img src="docs/screenshots/03-match.png" width="200" alt="Écran C'est un match"><br><sub><b>C'est un match !</b><br>Score d'affinité, direct au chat</sub></td>
+    <td align="center" width="25%"><img src="docs/screenshots/03-match.png" width="200" alt="Écran C'est un match"><br><sub><b>C'est un match !</b><br>Pluie de chats, ronron, score d'affinité</sub></td>
     <td align="center" width="25%"><img src="docs/screenshots/04-chat.png" width="200" alt="Conversation"><br><sub><b>Chat</b><br>Accusés de lecture, réponses rapides</sub></td>
   </tr>
   <tr>
@@ -134,7 +135,8 @@ bio, tempéraments et lieux de rencontre **surlignés en vert quand ils correspo
 tiens**, santé (vacciné · stérilisé · pucé), propriétaire, signalement.
 
 **Match** — écran de célébration avec les deux photos, score d'affinité, et accès direct
-à la conversation. Le match n'a lieu que si le like est réciproque.
+à la conversation. Le match n'a lieu que si le like est réciproque. Une **pluie d'emojis
+chats** tombe en fond et un **ronronnement** se déclenche — désactivable depuis le profil.
 
 **Likes reçus** — qui a liké ton chat, photos floutées jusqu'à ce que tu les révèles
 (la carotte Premium classique). Liker en retour crée le match immédiatement.
@@ -147,13 +149,32 @@ réponses rapides, en-tête cliquable vers la fiche, **dématcher** depuis le me
 
 **Profil** — galerie des photos de Richard avec plein écran, **jauge de complétion** qui
 indique la prochaine étape, stats, bio éditable, tempéraments, **lieu de rencontre
-préféré**, santé, contact masqué, offre Premium.
+préféré**, santé, interrupteur du ronronnement, contact masqué, offre Premium.
 
 ### Le lieu de rencontre
 
 Exactement trois choix, pas un de plus : **Parc**, **Appartement**, **Cour d'immeuble**.
 C'est un critère de profil, un filtre de recherche, et l'un des trois facteurs du score
 d'affinité (tempéraments 50 %, lieux communs 30 %, proximité 20 %).
+
+### La pluie de chats et le ronron
+
+[EmojiRain](src/components/EmojiRain.tsx) fait tomber 34 emojis pendant 5 s, avec taille,
+départ, dérive latérale et rotation aléatoires. Une **seule** valeur animée pilote tout le
+monde, chaque emoji lisant sa tranche via `interpolate()` : animer 34 valeurs séparées en
+JavaScript fait chuter le framerate sur mobile, et `react-native-web` n'a pas de moteur
+d'animation natif. La pluie tombe **derrière** la carte pour ne pas gêner la lecture.
+
+Le ronronnement ([assets/sounds/purr.mp3](assets/sounds/purr.mp3), 20 Ko) est **synthétisé**,
+pas téléchargé : un vrai ronron est une bouffée de bruit grave répétée ~25 fois par seconde.
+Le script génère du bruit blanc passé trois fois dans un filtre passe-bas, le module par un
+train d'impulsions à 24–27 Hz avec une cadence qui respire, et y ajoute un corps grave.
+Mesuré sur le fichier produit : cadence 25,1 Hz, 96 % de l'énergie sous 300 Hz.
+
+Safari mobile refuse un son qui ne descend pas d'un geste utilisateur. Or un match issu d'un
+swipe joue le ronron ~230 ms après le relâchement, dans le callback d'animation — trop tard.
+[SoundContext](src/context/SoundContext.tsx) déverrouille donc l'élément audio au tout premier
+appui sur la page, dans un vrai gestionnaire de geste.
 
 ### Le numéro de téléphone
 
@@ -183,6 +204,7 @@ docs/screenshots/                # captures utilisées dans ce README
 scripts/deploy-web.sh            # publication du build sur la branche gh-pages
 assets/richard/                  # photos de Richard
 assets/demo/                     # photos des chats de démo
+assets/sounds/purr.mp3           # ronronnement synthétisé
 src/
   theme.ts                       # couleurs, espacements, ombres, largeur max
   types.ts                       # Cat, Match, Message, Filters, MyCatProfile, MeetingPlace
@@ -192,6 +214,9 @@ src/
   components/SwipeDeck.tsx       # cartes swipeables (PanResponder + Animated)
   components/CatDetailSheet.tsx  # fiche profil complète
   components/ui.tsx              # Chip, Section, EmptyState, PrimaryButton, badge vérifié
+  components/MatchCelebration.tsx # écran « C'est un match ! » + pluie de chats
+  components/EmojiRain.tsx       # pluie d'emojis (une seule valeur animée)
+  context/SoundContext.tsx       # ronronnement, interrupteur, déverrouillage audio web
   screens/                       # Discover, Filters, Likes, Matches, Chat, Profile
 ```
 

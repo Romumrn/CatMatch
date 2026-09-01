@@ -29,7 +29,8 @@
       "lang": "fr"
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      "expo-audio"
     ],
     "description": "Trouve des copains de jeu pour ton chat près de chez toi.",
     "experiments": {

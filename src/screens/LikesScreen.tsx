@@ -5,7 +5,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useApp } from '../context/AppContext';
 import CatDetailSheet from '../components/CatDetailSheet';
-import { Cat } from '../types';
+import MatchCelebration from '../components/MatchCelebration';
+import { Cat, Match } from '../types';
+import { useSound } from '../context/SoundContext';
 import { colors, radius, shadow, spacing, CONTENT_MAX_W } from '../theme';
 import { EmptyState, PrimaryButton, VerifiedBadge } from '../components/ui';
 import { ageLabel, formatDistance } from '../utils/format';
@@ -17,8 +19,18 @@ import { ageLabel, formatDistance } from '../utils/format';
 export default function LikesScreen() {
   const { likesReceived, profile, likeCat, passCat } = useApp();
   const navigation = useNavigation<any>();
+  const { playPurr } = useSound();
   const [revealed, setRevealed] = useState<string[]>([]);
   const [details, setDetails] = useState<Cat | null>(null);
+  const [match, setMatch] = useState<Match | null>(null);
+
+  const celebrate = (cat: Cat) => {
+    const m = likeCat(cat);
+    if (m) {
+      setMatch(m);
+      playPurr();
+    }
+  };
 
   if (likesReceived.length === 0) {
     return (
@@ -111,10 +123,7 @@ export default function LikesScreen() {
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.tileBtn, { borderColor: colors.like, flex: 1 }]}
-                      onPress={() => {
-                        likeCat(item.cat);
-                        navigation.navigate('Matches');
-                      }}
+                      onPress={() => celebrate(item.cat)}
                     >
                       <Ionicons name="heart" size={16} color={colors.like} />
                       <Text style={styles.tileBtnText}>Match</Text>
@@ -127,13 +136,20 @@ export default function LikesScreen() {
         }}
       />
 
+      <MatchCelebration
+        match={match}
+        profile={profile}
+        onClose={() => setMatch(null)}
+        onOpenChat={(catId) => {
+          setMatch(null);
+          navigation.navigate('Matches', { screen: 'Chat', params: { catId } });
+        }}
+      />
+
       <CatDetailSheet
         cat={details}
         onClose={() => setDetails(null)}
-        onLike={(c) => {
-          likeCat(c);
-          navigation.navigate('Matches');
-        }}
+        onLike={celebrate}
         onPass={passCat}
       />
     </SafeAreaView>

@@ -6,6 +6,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppProvider, useApp } from './src/context/AppContext';
+import { SoundProvider } from './src/context/SoundContext';
 import DiscoverScreen from './src/screens/DiscoverScreen';
 import LikesScreen from './src/screens/LikesScreen';
 import MatchesScreen, { MatchesStackParamList } from './src/screens/MatchesScreen';
@@ -99,10 +100,12 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AppProvider>
-        <NavigationContainer theme={navTheme}>
-          <StatusBar style="dark" />
-          <Tabs />
-        </NavigationContainer>
+        <SoundProvider>
+          <NavigationContainer theme={navTheme}>
+            <StatusBar style="dark" />
+            <Tabs />
+          </NavigationContainer>
+        </SoundProvider>
       </AppProvider>
     </SafeAreaProvider>
   );

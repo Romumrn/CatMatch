@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Image, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -7,10 +7,11 @@ import { useApp } from '../context/AppContext';
 import SwipeDeck from '../components/SwipeDeck';
 import CatDetailSheet from '../components/CatDetailSheet';
 import FiltersSheet from './FiltersSheet';
+import MatchCelebration from '../components/MatchCelebration';
 import { Cat, Match } from '../types';
+import { useSound } from '../context/SoundContext';
 import { colors, radius, shadow, spacing, CONTENT_MAX_W } from '../theme';
 import { EmptyState, PrimaryButton } from '../components/ui';
-import { compatibility } from '../utils/format';
 
 export default function DiscoverScreen() {
   const {
@@ -26,6 +27,7 @@ export default function DiscoverScreen() {
     undoSwipe,
     resetFilters,
   } = useApp();
+  const { playPurr } = useSound();
   const navigation = useNavigation<any>();
   const [details, setDetails] = useState<Cat | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -40,14 +42,15 @@ export default function DiscoverScreen() {
     filters.temperaments.length +
     (filters.verifiedOnly ? 1 : 0);
 
-  const handleLike = (cat: Cat) => {
-    const m = likeCat(cat);
-    if (m) setMatch(m);
+  const celebrate = (m: Match | null) => {
+    if (!m) return;
+    setMatch(m);
+    // Déclenché depuis le geste lui-même : un navigateur mobile refuse un son
+    // qui ne descend pas directement d'une interaction utilisateur.
+    playPurr();
   };
-  const handleSuperLike = (cat: Cat) => {
-    const m = superLikeCat(cat);
-    if (m) setMatch(m);
-  };
+  const handleLike = (cat: Cat) => celebrate(likeCat(cat));
+  const handleSuperLike = (cat: Cat) => celebrate(superLikeCat(cat));
 
   const outOfSwipes = swipesLeft <= 0;
 
@@ -169,64 +172,15 @@ export default function DiscoverScreen() {
         resultCount={deck.length}
       />
 
-      {/* Écran « C'est un match ! » */}
-      <Modal visible={!!match} animationType="fade" transparent onRequestClose={() => setMatch(null)}>
-        {match && (
-          <View style={styles.matchOverlay}>
-            <View style={styles.matchCard}>
-              <Text style={styles.matchKicker}>
-                {match.superLike ? 'SUPER LIKE RENDU' : 'VOUS VOUS ÊTES LIKÉS'}
-              </Text>
-              <Text
-                style={[styles.matchTitle, match.superLike && { color: colors.superLike }]}
-              >
-                C'est un match ! 🎉
-              </Text>
-
-              <View style={styles.matchPhotos}>
-                <Image source={profile.photo} style={[styles.matchPhoto, { marginRight: -18 }]} />
-                <View
-                  style={[
-                    styles.matchHeart,
-                    match.superLike && { backgroundColor: colors.superLike },
-                  ]}
-                >
-                  <Ionicons name={match.superLike ? 'star' : 'heart'} size={17} color="#fff" />
-                </View>
-                <Image
-                  source={match.cat.photos[0]}
-                  style={[styles.matchPhoto, { marginLeft: -18 }]}
-                />
-              </View>
-
-              <Text style={styles.matchText}>
-                {profile.name} et {match.cat.name} pourraient devenir copains — vous avez{' '}
-                {compatibility(profile, match.cat)} % d'affinité.
-              </Text>
-              <Text style={styles.matchSub}>
-                Le contact de {match.cat.owner.name} reste masqué : écrivez-vous d'abord ici.
-              </Text>
-
-              <PrimaryButton
-                label="Envoyer un message"
-                icon="chatbubble"
-                style={{ alignSelf: 'stretch', marginTop: spacing.l }}
-                onPress={() => {
-                  const cat = match.cat;
-                  setMatch(null);
-                  navigation.navigate('Matches', {
-                    screen: 'Chat',
-                    params: { catId: cat.id },
-                  });
-                }}
-              />
-              <TouchableOpacity onPress={() => setMatch(null)} style={{ padding: spacing.s }}>
-                <Text style={styles.matchLater}>Continuer à swiper</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-      </Modal>
+      <MatchCelebration
+        match={match}
+        profile={profile}
+        onClose={() => setMatch(null)}
+        onOpenChat={(catId) => {
+          setMatch(null);
+          navigation.navigate('Matches', { screen: 'Chat', params: { catId } });
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -353,64 +307,4 @@ const styles = StyleSheet.create({
     fontSize: 12,
     paddingVertical: spacing.s,
   },
-  matchOverlay: {
-    flex: 1,
-    backgroundColor: colors.overlay,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.l,
-  },
-  matchCard: {
-    backgroundColor: colors.card,
-    borderRadius: radius.l,
-    padding: spacing.l,
-    alignItems: 'center',
-    width: '100%',
-    maxWidth: 380,
-  },
-  matchKicker: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: colors.textLight,
-    letterSpacing: 1.4,
-  },
-  matchTitle: { fontSize: 27, fontWeight: '800', color: colors.primary, marginTop: 4 },
-  matchPhotos: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: spacing.l,
-  },
-  matchPhoto: {
-    width: 108,
-    height: 108,
-    borderRadius: 54,
-    borderWidth: 4,
-    borderColor: colors.card,
-    backgroundColor: colors.border,
-  },
-  matchHeart: {
-    zIndex: 1,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: colors.card,
-  },
-  matchText: {
-    fontSize: 15.5,
-    color: colors.text,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  matchSub: {
-    fontSize: 13,
-    color: colors.textLight,
-    textAlign: 'center',
-    lineHeight: 19,
-    marginTop: spacing.s,
-  },
-  matchLater: { color: colors.textLight, marginTop: spacing.s, fontSize: 14, fontWeight: '600' },
 });
