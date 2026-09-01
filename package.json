@@ -20,7 +20,6 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.10",
-    "gh-pages": "^6.3.0",
     "typescript": "~5.9.2"
   },
   "scripts": {
@@ -30,7 +29,7 @@
     "web": "expo start --web",
     "build:web": "expo export -p web",
     "predeploy": "expo export -p web",
-    "deploy": "gh-pages --nojekyll -d dist"
+    "deploy": "./scripts/deploy-web.sh"
   },
   "private": true,
   "homepage": "https://romumrn.github.io/CatMatch"

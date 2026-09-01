@@ -87,9 +87,18 @@ Le site est un export web statique d'Expo, publié sur la branche `gh-pages`.
 npm run deploy
 ```
 
-`predeploy` lance `expo export -p web` (sortie dans `dist/`), puis `gh-pages --nojekyll -d dist`
-pousse le résultat. Le flag `--nojekyll` est indispensable : Expo génère un dossier `_expo/`
-et Jekyll ignore les dossiers commençant par `_`.
+`predeploy` lance `expo export -p web` (sortie dans `dist/`), puis
+[scripts/deploy-web.sh](scripts/deploy-web.sh) recopie `dist/` dans un worktree git sur
+`gh-pages` et pousse.
+
+Deux pièges que le script neutralise :
+
+- Il crée un fichier **`.nojekyll`**. Sans lui, Jekyll ignore le dossier `_expo/` généré
+  par Expo (Jekyll saute tout ce qui commence par `_`) et le bundle JS renvoie 404.
+- Il fait un **`git add -f`**. Le `.gitignore` du dépôt contient `node_modules/`, ce qui
+  écarterait silencieusement `dist/assets/node_modules/**` — c'est-à-dire toutes les
+  polices d'icônes, qui s'afficheraient en carrés vides. C'est exactement ce que fait le
+  paquet `gh-pages`, d'où le script maison.
 
 Deux réglages rendent ça possible, dans [app.json](app.json) :
 
@@ -120,6 +129,7 @@ Le profil affiché au lancement est celui de Richard, avec de vraies photos dans
 App.tsx                      # navigation (3 onglets + stack chat), démarre sur "Profil"
 app.json                     # config Expo + export web (baseUrl GitHub Pages)
 docs/screenshots/            # captures utilisées dans ce README
+scripts/deploy-web.sh        # publication du build sur la branche gh-pages
 assets/richard/              # photos de Richard
 src/
   theme.ts                   # couleurs / espacements
