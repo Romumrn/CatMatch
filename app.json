@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "catmatch",
+    "name": "CatMatch",
     "slug": "catmatch",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -19,10 +19,21 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/favicon.png",
+      "name": "CatMatch",
+      "shortName": "CatMatch",
+      "themeColor": "#FF6B6B",
+      "backgroundColor": "#FFF9F5",
+      "lang": "fr"
     },
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "description": "Trouve des copains de jeu pour ton chat près de chez toi.",
+    "experiments": {
+      "baseUrl": "/CatMatch"
+    }
   }
 }

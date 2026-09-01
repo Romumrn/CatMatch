@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import {
+  Dimensions,
   Image,
+  ImageSourcePropType,
+  Modal,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -24,10 +28,18 @@ const ALL_TEMPERAMENTS: Temperament[] = [
 ];
 const RADIUS_OPTIONS = [300, 500, 1000, 2000];
 
+// Le web tourne aussi sur desktop : on borne la largeur du contenu.
+const CONTENT_MAX_W = 480;
+
 export default function ProfileScreen() {
   const { profile, matches, updateProfile } = useApp();
   const [editingBio, setEditingBio] = useState(false);
   const [bioDraft, setBioDraft] = useState(profile.bio);
+  const [heroIndex, setHeroIndex] = useState(0);
+  const [lightbox, setLightbox] = useState<ImageSourcePropType | null>(null);
+
+  const gallery = profile.photos.length > 0 ? profile.photos : [profile.photo];
+  const hero = gallery[Math.min(heroIndex, gallery.length - 1)];
 
   const toggleTemperament = (t: Temperament) => {
     const has = profile.temperaments.includes(t);
@@ -40,104 +52,138 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView contentContainerStyle={{ paddingBottom: spacing.xl }}>
-        <Text style={styles.title}>👤 Mon profil</Text>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <View style={styles.content}>
+          <Text style={styles.title}>👤 Mon profil</Text>
 
-        <View style={styles.headerCard}>
-          <Image source={{ uri: profile.photo }} style={styles.photo} />
-          <Text style={styles.name}>
-            {profile.name}, {profile.age} an{profile.age > 1 ? 's' : ''}{' '}
-            {profile.sex === 'M' ? '♂' : '♀'}
-          </Text>
-          <Text style={styles.type}>{profile.type}</Text>
-        </View>
-
-        {/* Stats */}
-        <View style={styles.statsRow}>
-          <Stat emoji="❤️" value={profile.stats.likes} label="likes" />
-          <Stat emoji="👁️" value={profile.stats.views} label="vues" />
-          <Stat emoji="💬" value={matches.length} label="matches" />
-        </View>
-
-        {/* Bio */}
-        <Section title="À propos">
-          {editingBio ? (
-            <View>
-              <TextInput
-                style={styles.bioInput}
-                value={bioDraft}
-                onChangeText={setBioDraft}
-                multiline
-              />
-              <TouchableOpacity
-                style={styles.saveBtn}
-                onPress={() => {
-                  updateProfile({ bio: bioDraft });
-                  setEditingBio(false);
-                }}
-              >
-                <Text style={styles.saveBtnText}>Enregistrer</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity onPress={() => setEditingBio(true)}>
-              <Text style={styles.bio}>{profile.bio}</Text>
-              <Text style={styles.editHint}>
-                <Ionicons name="pencil" size={12} /> Toucher pour modifier
-              </Text>
+          <View style={styles.headerCard}>
+            <TouchableOpacity activeOpacity={0.9} onPress={() => setLightbox(hero)}>
+              <Image source={hero} style={styles.hero} resizeMode="cover" />
             </TouchableOpacity>
-          )}
-        </Section>
 
-        {/* Tempérament */}
-        <Section title="Tempérament">
-          <View style={styles.tagsRow}>
-            {ALL_TEMPERAMENTS.map((t) => {
-              const active = profile.temperaments.includes(t);
-              return (
-                <TouchableOpacity
-                  key={t}
-                  style={[styles.tag, active && styles.tagActive]}
-                  onPress={() => toggleTemperament(t)}
-                >
-                  <Text style={[styles.tagText, active && styles.tagTextActive]}>{t}</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.thumbStrip}
+              contentContainerStyle={styles.thumbRow}
+            >
+              {gallery.map((p, i) => (
+                <TouchableOpacity key={i} onPress={() => setHeroIndex(i)} activeOpacity={0.8}>
+                  <Image
+                    source={p}
+                    style={[styles.thumb, i === heroIndex && styles.thumbActive]}
+                    resizeMode="cover"
+                  />
                 </TouchableOpacity>
-              );
-            })}
-          </View>
-        </Section>
+              ))}
+            </ScrollView>
 
-        {/* Rayon de recherche */}
-        <Section title="Rayon de recherche">
-          <View style={styles.tagsRow}>
-            {RADIUS_OPTIONS.map((r) => {
-              const active = profile.radiusM === r;
-              return (
+            <Text style={styles.name}>
+              {profile.name}, {profile.age} an{profile.age > 1 ? 's' : ''}{' '}
+              {profile.sex === 'M' ? '♂' : '♀'}
+            </Text>
+            <Text style={styles.type}>{profile.type}</Text>
+          </View>
+
+          {/* Stats */}
+          <View style={styles.statsRow}>
+            <Stat emoji="❤️" value={profile.stats.likes} label="likes" />
+            <Stat emoji="👁️" value={profile.stats.views} label="vues" />
+            <Stat emoji="💬" value={matches.length} label="matches" />
+          </View>
+
+          {/* Bio */}
+          <Section title="À propos">
+            {editingBio ? (
+              <View>
+                <TextInput
+                  style={styles.bioInput}
+                  value={bioDraft}
+                  onChangeText={setBioDraft}
+                  multiline
+                />
                 <TouchableOpacity
-                  key={r}
-                  style={[styles.tag, active && styles.tagActive]}
-                  onPress={() => updateProfile({ radiusM: r })}
+                  style={styles.saveBtn}
+                  onPress={() => {
+                    updateProfile({ bio: bioDraft });
+                    setEditingBio(false);
+                  }}
                 >
-                  <Text style={[styles.tagText, active && styles.tagTextActive]}>
-                    {r < 1000 ? `${r} m` : `${r / 1000} km`}
-                  </Text>
+                  <Text style={styles.saveBtnText}>Enregistrer</Text>
                 </TouchableOpacity>
-              );
-            })}
-          </View>
-        </Section>
+              </View>
+            ) : (
+              <TouchableOpacity onPress={() => setEditingBio(true)}>
+                <Text style={styles.bio}>{profile.bio}</Text>
+                <Text style={styles.editHint}>
+                  <Ionicons name="pencil" size={12} /> Toucher pour modifier
+                </Text>
+              </TouchableOpacity>
+            )}
+          </Section>
 
-        {/* Premium */}
-        <View style={styles.premiumCard}>
-          <Text style={styles.premiumTitle}>💎 CatMatch Premium</Text>
-          <Text style={styles.premiumText}>
-            Swipes illimités · Voir qui t'a liké · Messages vidéo · Sans pub
-          </Text>
-          <TouchableOpacity style={styles.premiumBtn}>
-            <Text style={styles.premiumBtnText}>2,99 €/mois — Bientôt disponible</Text>
-          </TouchableOpacity>
+          {/* Tempérament */}
+          <Section title="Tempérament">
+            <View style={styles.tagsRow}>
+              {ALL_TEMPERAMENTS.map((t) => {
+                const active = profile.temperaments.includes(t);
+                return (
+                  <TouchableOpacity
+                    key={t}
+                    style={[styles.tag, active && styles.tagActive]}
+                    onPress={() => toggleTemperament(t)}
+                  >
+                    <Text style={[styles.tagText, active && styles.tagTextActive]}>{t}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </Section>
+
+          {/* Rayon de recherche */}
+          <Section title="Rayon de recherche">
+            <View style={styles.tagsRow}>
+              {RADIUS_OPTIONS.map((r) => {
+                const active = profile.radiusM === r;
+                return (
+                  <TouchableOpacity
+                    key={r}
+                    style={[styles.tag, active && styles.tagActive]}
+                    onPress={() => updateProfile({ radiusM: r })}
+                  >
+                    <Text style={[styles.tagText, active && styles.tagTextActive]}>
+                      {r < 1000 ? `${r} m` : `${r / 1000} km`}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </Section>
+
+          {/* Premium */}
+          <View style={styles.premiumCard}>
+            <Text style={styles.premiumTitle}>💎 CatMatch Premium</Text>
+            <Text style={styles.premiumText}>
+              Swipes illimités · Voir qui t'a liké · Messages vidéo · Sans pub
+            </Text>
+            <TouchableOpacity style={styles.premiumBtn}>
+              <Text style={styles.premiumBtnText}>2,99 €/mois — Bientôt disponible</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
+
+      {/* Photo en plein écran */}
+      <Modal visible={!!lightbox} transparent animationType="fade" onRequestClose={() => setLightbox(null)}>
+        <Pressable style={styles.lightbox} onPress={() => setLightbox(null)}>
+          {lightbox && (
+            <Image source={lightbox} style={styles.lightboxImage} resizeMode="contain" />
+          )}
+          <View style={styles.lightboxClose}>
+            <Ionicons name="close" size={28} color="#fff" />
+          </View>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -164,6 +210,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
+  scroll: { paddingBottom: spacing.xl, alignItems: 'center' },
+  content: { width: '100%', maxWidth: CONTENT_MAX_W },
   title: {
     fontSize: 24,
     fontWeight: '800',
@@ -172,14 +220,33 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.m,
   },
   headerCard: { alignItems: 'center' },
-  photo: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 4,
-    borderColor: colors.primary,
+  hero: {
+    width: Math.min(Dimensions.get('window').width, CONTENT_MAX_W) - spacing.l * 2,
+    // Hauteur bornée pour que le nom et la bio restent visibles sans scroller.
+    height: Math.min(320, Dimensions.get('window').height * 0.42),
+    borderRadius: radius.l,
+    backgroundColor: colors.border,
   },
-  name: { fontSize: 22, fontWeight: '800', color: colors.text, marginTop: spacing.s },
+  thumbStrip: { alignSelf: 'stretch' },
+  thumbRow: { gap: spacing.s, paddingHorizontal: spacing.l, paddingVertical: spacing.s },
+  thumb: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.s,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    backgroundColor: colors.border,
+  },
+  thumbActive: { borderColor: colors.primary },
+  lightbox: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lightboxImage: { width: '100%', height: '80%' },
+  lightboxClose: { position: 'absolute', top: 40, right: 24 },
+  name: { fontSize: 24, fontWeight: '800', color: colors.text, marginTop: spacing.s },
   type: { fontSize: 14, color: colors.textLight, marginTop: 2 },
   statsRow: {
     flexDirection: 'row',

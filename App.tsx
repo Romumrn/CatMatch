@@ -44,6 +44,7 @@ function Tabs() {
   const { matches } = useApp();
   return (
     <Tab.Navigator
+      initialRouteName="Profil"
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primary,

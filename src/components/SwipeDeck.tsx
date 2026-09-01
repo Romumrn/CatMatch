@@ -12,7 +12,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { Cat } from '../types';
 import { colors, radius, spacing } from '../theme';
 
-const { width: SCREEN_W } = Dimensions.get('window');
+const { width: WINDOW_W } = Dimensions.get('window');
+// Sur desktop (version web), on borne la carte pour garder un format mobile.
+const SCREEN_W = Math.min(WINDOW_W, 480);
 const SWIPE_THRESHOLD = SCREEN_W * 0.3;
 
 interface Props {

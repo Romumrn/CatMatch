@@ -22,13 +22,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [matches, setMatches] = useState<Match[]>([]);
   const [swipesLeft, setSwipesLeft] = useState(DAILY_SWIPE_LIMIT);
   const [profile, setProfile] = useState<MyCatProfile>({
-    name: 'Félix',
+    name: 'Richard',
     age: 2,
     sex: 'M',
-    temperaments: ['Joueur', 'Sociable'],
+    temperaments: ['Joueur', 'Sociable', 'Timide'],
     type: 'Intérieur',
-    bio: 'Boule de poils curieuse qui cherche des copains dans le quartier !',
-    photo: 'https://placecats.com/bella/601/800',
+    bio: "Très joueur et très sociable une fois en confiance, mais un peu peureux dans les nouveaux environnements. Cherche des copains patients pour jouer près de chez lui !",
+    photo: require('../../assets/richard/richard-7.jpg'),
+    photos: [
+      require('../../assets/richard/richard-7.jpg'),
+      require('../../assets/richard/richard-2.jpg'),
+      require('../../assets/richard/richard-1.jpg'),
+      require('../../assets/richard/richard-5.jpg'),
+      require('../../assets/richard/richard-9.jpg'),
+      require('../../assets/richard/richard-3.jpg'),
+      require('../../assets/richard/richard-4.jpg'),
+      require('../../assets/richard/richard-6.jpg'),
+      require('../../assets/richard/richard-8.jpg'),
+      require('../../assets/richard/richard-10.jpg'),
+    ],
     radiusM: 1000,
     stats: { likes: 24, views: 156 },
   });

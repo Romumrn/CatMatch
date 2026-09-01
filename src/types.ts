@@ -1,3 +1,5 @@
+import { ImageSourcePropType } from 'react-native';
+
 export type Temperament =
   | 'Joueur'
   | 'Calme'
@@ -46,7 +48,8 @@ export interface MyCatProfile {
   temperaments: Temperament[];
   type: CatType;
   bio: string;
-  photo: string;
+  photo: ImageSourcePropType;
+  photos: ImageSourcePropType[];
   radiusM: number;
   stats: { likes: number; views: number };
 }
