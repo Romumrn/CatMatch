@@ -7,6 +7,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -15,8 +16,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
-import { Temperament } from '../types';
-import { colors, radius, spacing } from '../theme';
+import { MeetingPlace, Temperament } from '../types';
+import { colors, radius, shadow, spacing, CONTENT_MAX_W } from '../theme';
+import { Chip, PrimaryButton, VerifiedBadge } from '../components/ui';
+import { placeIcon } from '../components/CatDetailSheet';
+import { ageLabel, maskPhone, profileCompletion } from '../utils/format';
 
 const ALL_TEMPERAMENTS: Temperament[] = [
   'Joueur',
@@ -26,13 +30,10 @@ const ALL_TEMPERAMENTS: Temperament[] = [
   'Dominant',
   'Énergique',
 ];
-const RADIUS_OPTIONS = [300, 500, 1000, 2000];
-
-// Le web tourne aussi sur desktop : on borne la largeur du contenu.
-const CONTENT_MAX_W = 480;
+const ALL_PLACES: MeetingPlace[] = ['Parc', 'Appartement', "Cour d'immeuble"];
 
 export default function ProfileScreen() {
-  const { profile, matches, updateProfile } = useApp();
+  const { profile, matches, likesReceived, updateProfile } = useApp();
   const [editingBio, setEditingBio] = useState(false);
   const [bioDraft, setBioDraft] = useState(profile.bio);
   const [heroIndex, setHeroIndex] = useState(0);
@@ -40,15 +41,10 @@ export default function ProfileScreen() {
 
   const gallery = profile.photos.length > 0 ? profile.photos : [profile.photo];
   const hero = gallery[Math.min(heroIndex, gallery.length - 1)];
+  const { pct, missing } = profileCompletion(profile);
 
-  const toggleTemperament = (t: Temperament) => {
-    const has = profile.temperaments.includes(t);
-    updateProfile({
-      temperaments: has
-        ? profile.temperaments.filter((x) => x !== t)
-        : [...profile.temperaments, t],
-    });
-  };
+  const toggle = <T,>(list: T[], value: T): T[] =>
+    list.includes(value) ? list.filter((x) => x !== value) : [...list, value];
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -59,6 +55,9 @@ export default function ProfileScreen() {
           <View style={styles.headerCard}>
             <TouchableOpacity activeOpacity={0.9} onPress={() => setLightbox(hero)}>
               <Image source={hero} style={styles.hero} resizeMode="cover" />
+              <View style={styles.heroHint}>
+                <Ionicons name="expand" size={13} color="#fff" />
+              </View>
             </TouchableOpacity>
 
             <ScrollView
@@ -78,16 +77,40 @@ export default function ProfileScreen() {
               ))}
             </ScrollView>
 
-            <Text style={styles.name}>
-              {profile.name}, {profile.age} an{profile.age > 1 ? 's' : ''}{' '}
-              {profile.sex === 'M' ? '♂' : '♀'}
+            <View style={styles.nameRow}>
+              <Text style={styles.name}>
+                {profile.name}, {ageLabel(profile.age)}
+              </Text>
+              {profile.verified && <VerifiedBadge size={19} />}
+              <Text style={styles.sex}>{profile.sex === 'M' ? '♂' : '♀'}</Text>
+            </View>
+            <Text style={styles.type}>
+              {profile.breed} · {profile.type}
             </Text>
-            <Text style={styles.type}>{profile.type}</Text>
+          </View>
+
+          {/* Complétion du profil */}
+          <View style={styles.completion}>
+            <View style={styles.completionHead}>
+              <Text style={styles.completionTitle}>Profil complété à {pct} %</Text>
+              {missing.length === 0 && (
+                <Ionicons name="checkmark-circle" size={17} color={colors.like} />
+              )}
+            </View>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${pct}%` }]} />
+            </View>
+            {missing.length > 0 && (
+              <Text style={styles.completionHint}>
+                Prochaine étape : {missing[0].toLowerCase()} — les profils complets reçoivent 3×
+                plus de likes.
+              </Text>
+            )}
           </View>
 
           {/* Stats */}
           <View style={styles.statsRow}>
-            <Stat emoji="❤️" value={profile.stats.likes} label="likes" />
+            <Stat emoji="❤️" value={profile.stats.likes + likesReceived.length} label="likes" />
             <Stat emoji="👁️" value={profile.stats.views} label="vues" />
             <Stat emoji="💬" value={matches.length} label="matches" />
           </View>
@@ -101,16 +124,21 @@ export default function ProfileScreen() {
                   value={bioDraft}
                   onChangeText={setBioDraft}
                   multiline
+                  autoFocus
+                  maxLength={300}
                 />
-                <TouchableOpacity
-                  style={styles.saveBtn}
-                  onPress={() => {
-                    updateProfile({ bio: bioDraft });
-                    setEditingBio(false);
-                  }}
-                >
-                  <Text style={styles.saveBtnText}>Enregistrer</Text>
-                </TouchableOpacity>
+                <View style={styles.bioActions}>
+                  <Text style={styles.counter}>{bioDraft.length}/300</Text>
+                  <TouchableOpacity
+                    style={styles.saveBtn}
+                    onPress={() => {
+                      updateProfile({ bio: bioDraft });
+                      setEditingBio(false);
+                    }}
+                  >
+                    <Text style={styles.saveBtnText}>Enregistrer</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             ) : (
               <TouchableOpacity onPress={() => setEditingBio(true)}>
@@ -125,60 +153,112 @@ export default function ProfileScreen() {
           {/* Tempérament */}
           <Section title="Tempérament">
             <View style={styles.tagsRow}>
-              {ALL_TEMPERAMENTS.map((t) => {
-                const active = profile.temperaments.includes(t);
-                return (
-                  <TouchableOpacity
-                    key={t}
-                    style={[styles.tag, active && styles.tagActive]}
-                    onPress={() => toggleTemperament(t)}
-                  >
-                    <Text style={[styles.tagText, active && styles.tagTextActive]}>{t}</Text>
-                  </TouchableOpacity>
-                );
-              })}
+              {ALL_TEMPERAMENTS.map((t) => (
+                <Chip
+                  key={t}
+                  label={t}
+                  active={profile.temperaments.includes(t)}
+                  onPress={() =>
+                    updateProfile({ temperaments: toggle(profile.temperaments, t) })
+                  }
+                />
+              ))}
             </View>
           </Section>
 
-          {/* Rayon de recherche */}
-          <Section title="Rayon de recherche">
+          {/* Lieu de rencontre préféré */}
+          <Section title="Lieu de rencontre préféré">
+            <Text style={styles.sectionHint}>
+              Où {profile.name} est le plus à l'aise pour rencontrer un autre chat.
+            </Text>
             <View style={styles.tagsRow}>
-              {RADIUS_OPTIONS.map((r) => {
-                const active = profile.radiusM === r;
-                return (
-                  <TouchableOpacity
-                    key={r}
-                    style={[styles.tag, active && styles.tagActive]}
-                    onPress={() => updateProfile({ radiusM: r })}
-                  >
-                    <Text style={[styles.tagText, active && styles.tagTextActive]}>
-                      {r < 1000 ? `${r} m` : `${r / 1000} km`}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+              {ALL_PLACES.map((p) => (
+                <Chip
+                  key={p}
+                  label={p}
+                  icon={placeIcon(p)}
+                  active={profile.meetingPlaces.includes(p)}
+                  onPress={() =>
+                    updateProfile({ meetingPlaces: toggle(profile.meetingPlaces, p) })
+                  }
+                />
+              ))}
             </View>
+          </Section>
+
+          {/* Santé */}
+          <Section title="Santé">
+            <View style={styles.healthCard}>
+              <HealthRow
+                label="Vacciné"
+                value={profile.health.vaccinated}
+                onChange={(v) => updateProfile({ health: { ...profile.health, vaccinated: v } })}
+              />
+              <HealthRow
+                label="Stérilisé"
+                value={profile.health.sterilized}
+                onChange={(v) => updateProfile({ health: { ...profile.health, sterilized: v } })}
+              />
+              <HealthRow
+                label="Pucé"
+                value={profile.health.chipped}
+                onChange={(v) => updateProfile({ health: { ...profile.health, chipped: v } })}
+                last
+              />
+            </View>
+          </Section>
+
+          {/* Contact */}
+          <Section title="Mon contact">
+            <View style={styles.contactCard}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.contactName}>{profile.owner.name}</Text>
+                <Text style={styles.contactPhone}>{maskPhone(profile.owner.phone)}</Text>
+              </View>
+              <Ionicons name="lock-closed" size={17} color={colors.textLight} />
+            </View>
+            <Text style={styles.sectionHint}>
+              Ton numéro n'est jamais affiché en clair aux autres utilisateurs, même après un
+              match. Tu le partages toi-même dans le chat si tu le souhaites.
+            </Text>
           </Section>
 
           {/* Premium */}
           <View style={styles.premiumCard}>
-            <Text style={styles.premiumTitle}>💎 CatMatch Premium</Text>
-            <Text style={styles.premiumText}>
-              Swipes illimités · Voir qui t'a liké · Messages vidéo · Sans pub
-            </Text>
-            <TouchableOpacity style={styles.premiumBtn}>
-              <Text style={styles.premiumBtnText}>2,99 €/mois — Bientôt disponible</Text>
-            </TouchableOpacity>
+            <View style={styles.premiumHead}>
+              <Ionicons name="diamond" size={19} color={colors.gold} />
+              <Text style={styles.premiumTitle}>CatMatch Premium</Text>
+            </View>
+            {[
+              'Swipes illimités',
+              "Voir qui t'a liké sans flou",
+              'Super likes illimités',
+              'Remonter dans le quartier une fois par semaine',
+              'Sans publicité',
+            ].map((line) => (
+              <View key={line} style={styles.premiumLine}>
+                <Ionicons name="checkmark" size={14} color={colors.gold} />
+                <Text style={styles.premiumText}>{line}</Text>
+              </View>
+            ))}
+            <PrimaryButton
+              label="2,99 €/mois — Bientôt disponible"
+              tone="gold"
+              style={{ marginTop: spacing.m }}
+            />
           </View>
         </View>
       </ScrollView>
 
       {/* Photo en plein écran */}
-      <Modal visible={!!lightbox} transparent animationType="fade" onRequestClose={() => setLightbox(null)}>
+      <Modal
+        visible={!!lightbox}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setLightbox(null)}
+      >
         <Pressable style={styles.lightbox} onPress={() => setLightbox(null)}>
-          {lightbox && (
-            <Image source={lightbox} style={styles.lightboxImage} resizeMode="contain" />
-          )}
+          {lightbox && <Image source={lightbox} style={styles.lightboxImage} resizeMode="contain" />}
           <View style={styles.lightboxClose}>
             <Ionicons name="close" size={28} color="#fff" />
           </View>
@@ -208,12 +288,36 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+function HealthRow({
+  label,
+  value,
+  onChange,
+  last,
+}: {
+  label: string;
+  value: boolean;
+  onChange: (v: boolean) => void;
+  last?: boolean;
+}) {
+  return (
+    <View style={[styles.healthRow, !last && styles.healthRowBorder]}>
+      <Text style={styles.healthLabel}>{label}</Text>
+      <Switch
+        value={value}
+        onValueChange={onChange}
+        trackColor={{ true: colors.like, false: colors.border }}
+        thumbColor="#fff"
+      />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   scroll: { paddingBottom: spacing.xl, alignItems: 'center' },
   content: { width: '100%', maxWidth: CONTENT_MAX_W },
   title: {
-    fontSize: 24,
+    fontSize: 23,
     fontWeight: '800',
     color: colors.primary,
     paddingHorizontal: spacing.l,
@@ -227,6 +331,17 @@ const styles = StyleSheet.create({
     borderRadius: radius.l,
     backgroundColor: colors.border,
   },
+  heroHint: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   thumbStrip: { alignSelf: 'stretch' },
   thumbRow: { gap: spacing.s, paddingHorizontal: spacing.l, paddingVertical: spacing.s },
   thumb: {
@@ -238,31 +353,37 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border,
   },
   thumbActive: { borderColor: colors.primary },
-  lightbox: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.92)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  lightboxImage: { width: '100%', height: '80%' },
-  lightboxClose: { position: 'absolute', top: 40, right: 24 },
-  name: { fontSize: 24, fontWeight: '800', color: colors.text, marginTop: spacing.s },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.s },
+  name: { fontSize: 24, fontWeight: '800', color: colors.text },
+  sex: { fontSize: 19, color: colors.textLight },
   type: { fontSize: 14, color: colors.textLight, marginTop: 2 },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-evenly',
-    marginVertical: spacing.l,
+  completion: {
+    marginHorizontal: spacing.l,
+    marginTop: spacing.l,
+    backgroundColor: colors.card,
+    borderRadius: radius.m,
+    padding: spacing.m,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
+  completionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  completionTitle: { fontWeight: '700', color: colors.text, fontSize: 14.5 },
+  progressTrack: {
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: colors.border,
+    marginTop: spacing.s,
+    overflow: 'hidden',
+  },
+  progressFill: { height: '100%', borderRadius: 4, backgroundColor: colors.primary },
+  completionHint: { fontSize: 12.5, color: colors.textLight, marginTop: spacing.s, lineHeight: 18 },
+  statsRow: { flexDirection: 'row', justifyContent: 'space-evenly', marginVertical: spacing.l },
   stat: { alignItems: 'center' },
   statValue: { fontSize: 18, fontWeight: '700', color: colors.text },
   statLabel: { fontSize: 13, color: colors.textLight, marginTop: 2 },
   section: { paddingHorizontal: spacing.l, marginBottom: spacing.l },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: spacing.s,
-  },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: spacing.s },
+  sectionHint: { fontSize: 12.5, color: colors.textLight, marginBottom: spacing.s, lineHeight: 18 },
   bio: { fontSize: 15, color: colors.text, lineHeight: 22 },
   editHint: { fontSize: 12, color: colors.textLight, marginTop: 4 },
   bioInput: {
@@ -273,46 +394,70 @@ const styles = StyleSheet.create({
     padding: spacing.m,
     fontSize: 15,
     color: colors.text,
-    minHeight: 80,
+    minHeight: 100,
     textAlignVertical: 'top',
   },
+  bioActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.s,
+  },
+  counter: { fontSize: 12, color: colors.textLight },
   saveBtn: {
-    alignSelf: 'flex-end',
     backgroundColor: colors.primary,
     paddingHorizontal: spacing.m,
     paddingVertical: 8,
-    borderRadius: 999,
-    marginTop: spacing.s,
+    borderRadius: radius.pill,
   },
   saveBtnText: { color: '#fff', fontWeight: '700' },
   tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.s },
-  tag: {
+  healthCard: {
     backgroundColor: colors.card,
+    borderRadius: radius.m,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
+    paddingHorizontal: spacing.m,
   },
-  tagActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  tagText: { color: colors.text, fontWeight: '600', fontSize: 14 },
-  tagTextActive: { color: '#fff' },
+  healthRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.s + 2,
+  },
+  healthRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
+  healthLabel: { fontSize: 15, color: colors.text, fontWeight: '600' },
+  contactCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: radius.m,
+    padding: spacing.m,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing.s,
+  },
+  contactName: { fontWeight: '700', color: colors.text, fontSize: 15 },
+  contactPhone: { color: colors.textLight, fontSize: 14, marginTop: 2, letterSpacing: 1 },
   premiumCard: {
     marginHorizontal: spacing.l,
-    backgroundColor: '#FFF4DE',
+    backgroundColor: colors.goldSoft,
     borderRadius: radius.m,
     padding: spacing.l,
     borderWidth: 1,
     borderColor: '#F5E0B8',
+    ...shadow.soft,
   },
+  premiumHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.s },
   premiumTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
-  premiumText: { fontSize: 14, color: colors.textLight, marginTop: 6, lineHeight: 20 },
-  premiumBtn: {
-    backgroundColor: colors.gold,
-    borderRadius: 999,
-    paddingVertical: 10,
+  premiumLine: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: spacing.s },
+  premiumText: { fontSize: 14, color: colors.text },
+  lightbox: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.92)',
     alignItems: 'center',
-    marginTop: spacing.m,
+    justifyContent: 'center',
   },
-  premiumBtnText: { fontWeight: '800', color: colors.text },
+  lightboxImage: { width: '100%', height: '80%' },
+  lightboxClose: { position: 'absolute', top: 40, right: 24 },
 });
